@@ -1,0 +1,106 @@
+!
+! Calculates pairwise residue-residue energies at the interface.
+! Does *NOT* rebuild or minimize the structure. Use only for HADDOCK models.
+! Adapted from HADDOCK protocols here and there.
+! JR @ 2015
+!
+
+evaluate ($coorfile = "molecule.pdb")
+evaluate ($interface_dist_cutoff = 5.0)
+
+! Mute (most) output
+set message=off echo=off end
+
+!
+! Read parameter and topology databases
+!
+
+parameter
+    @@toppar/protein-allhdg5-4.param
+    @@toppar/ion.param
+    @@toppar/ligand.param
+end
+
+parameter
+  nbonds
+    nbxmod=5 atom cdie shift
+    cutnb=9.5 ctofnb=8.5 ctonnb=6.5 eps=1.0 e14fac=0.4 inhibit 0.25
+    wmin=0.5 tolerance  0.5
+  end
+end
+
+topology
+    @@toppar/protein-allhdg5-4.top
+    @@toppar/protein_break.top
+    @@toppar/ion.top
+    @@toppar/ligand.top
+end
+
+!
+! Read coordinates and calculate energies
+!
+
+segment
+  chain
+    separate=true
+    @@toppar/protein-allhdg5-4.link
+    coordinates @@$coorfile
+  end
+end
+
+coordinates @@$coorfile
+delete sele=(hydrogen and attr charge = 0) end
+delete sele=(not known) ! Remove e.g. undefined HIS prot. states
+!
+! Set energy flags
+!
+flags
+    exclude *
+    include vdw elec
+end
+
+!
+! Get interfacial residues of chain A (receptor)
+! Assume chains A & B
+!
+do (store1 = 1) (byres (segid A and
+                        (not segid A) around $interface_dist_cutoff))
+
+evaluate ($buffer_file = $coorfile - ".pdb" + ".pwr_ene")
+buffer energies to=file=$buffer_file end
+buffer energies
+    display ## Pairwise Interface Residue-Residue Energies ($coorfile)
+end
+
+for $id_a in id (attr store1 = 1 and tag) loop res_a
+    show (resid) (id $id_a)
+    evaluate ($resi_a = $result)
+    show (resn) (id $id_a)
+    evaluate ($resn_a = $result)
+
+    do (store2 = 0) (segid B)
+    for $id_b in id ( segid B and (segid A and resid $resi_a) around $interface_dist_cutoff ) loop res_b
+        show (resid) (id $id_b)
+        evaluate ($resi_b = $result)
+        show (resn) (id $id_b)
+        evaluate ($resn_b = $result)
+
+        ! Avoid multiple calcs per residue
+        identity (store3) (segid B and resid $resi_b and attribute store2 > 0)
+        if ( $select = 0 ) then
+            igroup interaction (segid A and resid $resi_a) (segid B and resid $resi_b) end
+            energy end
+            ! Calculate total energy as per HADDOCK scoring function
+            evaluate ($total = ($vdw + $elec))
+            buffer energies
+                display # A $resi_a $resn_a <> B $resi_b $resn_b - vdW = $vdw elec = $elec total = $total
+            end
+            do (store2 = 1) (segid B and resid $resi_b)
+        end if
+    end loop res_b
+
+end loop res_a
+
+buffer energies dump end
+
+stop

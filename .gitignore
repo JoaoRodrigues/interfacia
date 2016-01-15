@@ -1,0 +1,20 @@
+# Virtualenv Files
+.Python
+/bin/
+/lib/
+/include/
+
+# OSX Files
+.DS_Store
+
+# Temporary folder (data)
+./app/tmp/[0-9]*
+
+# pip
+pip-selfcheck.json
+
+# Python files
+*.pyc
+
+# Executable(s)
+*.exe
