@@ -7,7 +7,8 @@ import subprocess
 from Bio.Data.SCOPData import protein_letters_3to1 as aa3to1
 
 from app import app
-from flask import render_template, request, redirect, url_for
+from app.py import MolProcesser
+from flask import abort, render_template, request, redirect, send_file, url_for
 from werkzeug import secure_filename
 
 def run_cns_analysis(dpath):
@@ -125,3 +126,17 @@ def results(job_id=None):
 											   total_graph=json.dumps(total_graph),
 											   nodes=json.dumps(nodes)
 											  )
+
+
+@app.route('/results/<job_id>/<path:filename>')
+def serve_file(job_id=None, filename=None):
+	
+	job_dir = os.path.join(app.config['JOB_DIR'], job_id)
+	filename = os.path.join(job_dir, filename)
+	filename = filename if os.path.exists(filename) else False
+
+	if not filename:
+		abort(404)
+	else:
+		return send_file(filename) 
+

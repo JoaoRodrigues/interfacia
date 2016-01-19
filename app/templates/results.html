@@ -1,9 +1,26 @@
 <html>
   <head>
     <title>Interface Analysis</title>
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.12/d3.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+    <script src="{{ url_for('static', filename='js/pv/bio-pv.min.js') }}/"></script>
     <style type="text/css">
     	/* Containers */
+    	#chart {
+    		float: left;
+    		width: 50%;
+    		height: 100%;
+    	}
+    	#dataset-picker {
+    		float: left;
+    		width: 50%;
+    	}
+
+    	#viewer {
+    		float: right;
+    		width: 50%;
+    	}
 
    		/* Chord Styling */
 		#circle circle {
@@ -13,6 +30,11 @@
 
 		.group path {
 		  fill-opacity: .5;
+		}
+
+		.group path.highlight {
+			stroke: black;
+			stroke-width: 2;
 		}
 
 		path.chord {
@@ -32,8 +54,8 @@
   </head>
   <body>
   	<div id="chart"></div>
-  	<div id="dataset-picker"></div>
-
+  	<!-- <div id="dataset-picker"></div> -->
+  	<div id="viewer"></div>
 	<script type='text/javascript'>
 	
 		// Load data
@@ -65,11 +87,11 @@
 		};
 
     	// Setup SVG Canvas
-		var width = 500,
-		    height = 500,
+		var width = Math.round(parseInt(d3.select('#chart').style('width'), 10)),
+		    height = Math.round(parseInt(d3.select('#chart').style('height'), 10)),
 		    outerRadius = Math.min(width, height) / 2 - 30,
 		    innerRadius = outerRadius - 24;
-
+		
 		// Build color scale from energy values
 		function get_color_scale(mtx) {
 			var _flattened_array = [].concat.apply([], mtx)
@@ -172,13 +194,41 @@
 				});
 			};
 
-			// Clickers
+			// Clickers & Pass to PV selection and highlight
 			function group_click(d, i) {
-				console.log(nodes[i])
+				// Single Residue
+				var resViewName = 'pickedRes_'+nodes[i].seg+nodes[i].resi
+				pickedRes = window.structure.select({chain: nodes[i].seg, rnum: nodes[i].resi})
+				if (viewer.get(resViewName) === null) {
+					viewer.spheres(resViewName, pickedRes);
+					// TODO Highlight on chord too
+				} else {
+					// Hide Spheres
+					viewer.rm(resViewName);
+				}
+				viewer.requestRedraw();
 			};
 
 			function chord_click(d, i) {
-				console.log(nodes[d.source.index], nodes[d.target.index])
+				// Bond
+				var sourceAtom = window.structure.atom(nodes[d.source.index].seg+'.'+nodes[d.source.index].resi+'.CA')
+				var targetAtom = window.structure.atom(nodes[d.target.index].seg+'.'+nodes[d.target.index].resi+'.CA')
+
+				var bondViewName = 'pickedBond_'+sourceAtom.qualifiedName()+"&"+targetAtom.qualifiedName()
+				if (viewer.get(bondViewName) === null) {
+					var g = viewer.customMesh(bondViewName);
+			    var midPoint = pv.vec3.clone(sourceAtom.pos());
+			    pv.vec3.add(midPoint, midPoint, targetAtom.pos());
+			    pv.vec3.scale(midPoint, midPoint, 0.5);
+			    // add a tube to connect the two atoms
+			    // Color based on energy?
+			    g.addTube(sourceAtom.pos(), targetAtom.pos(), 1.0,
+			              { cap : true, color : 'yellow' });
+				} else {
+					// Hide
+					viewer.rm(bondViewName);
+				}
+				viewer.requestRedraw();
 			};
 
 			// Ticks & Labels
@@ -218,5 +268,34 @@
 		// Ramp
 		// TODO
     </script>
+	<script type='text/javascript'>
+		// override the default options with something less restrictive.
+		var options = {
+		  width: Math.round(parseInt(d3.select('#viewer').style('width'), 10)),
+		  height: Math.round(parseInt(d3.select('#viewer').style('height'), 10)),
+		  antialias: true,
+		  quality : 'high'
+		};
+		// insert the viewer under the Dom element with id 'gl'.
+		var viewer = pv.Viewer(document.getElementById('viewer'), options);
+	</script>
+	<script type='text/javascript'>
+		var structure = null;
+		function loadMolecule() {
+		  // asynchronously load the PDB file
+		  // from the server and display it in the viewer.
+		  $.ajax("{{ request.base_url }}/molecule.pdb")
+		  .done(function (data) {
+				structure = pv.io.pdb(data);
+				// Match chain colors to D3 representation
+				viewer.tube('protein', structure, {color: color.byChain(), radius: 1.0 });
+				viewer.autoZoom();
+		  });
+		}
+
+		// load the structure once the DOM has finished loading. That's
+		// the earliest point the WebGL context is available.
+		document.addEventListener('DOMContentLoaded', loadMolecule);
+	</script>
   </body>
 </html>
