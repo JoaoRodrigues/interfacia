@@ -12,18 +12,23 @@ from flask import abort, render_template, request, redirect, send_file, url_for
 from werkzeug import secure_filename
 
 def run_cns_analysis(dpath):
-	"""Small function to run CNS asynchronously"""
+	"""
+	Small function to run CNS in the background.
+	Probably not scalable.
+	"""
 
 	os.chdir(dpath)
-	cns_inp = os.path.basename(app.config['CNS_INP'])
-	cns_inp = os.path.join(dpath, cns_inp)
+	builder = os.path.basename(app.config['BUILDR_INP'])
+	builder = os.path.join(dpath, builder)
+	energy = os.path.basename(app.config['ENERGY_INP'])
+	energy = os.path.join(dpath, energy)
 
 	if not os.path.exists('molecule.pdb') \
-		or not os.path.exists(cns_inp) \
+		or not os.path.exists(builder) or not os.path.exists(energy) \
 		or not os.path.exists(os.path.dirname(app.config['TOPPAR'])):
 			return False
 	else:
-		cmd = '{0} < {1} > cns.log'.format(app.config['CNS_EXE'], cns_inp)
+		cmd = '{0} < {1} > builder.log\n{0} < {2} > energy.log'.format(app.config['CNS_EXE'], builder, energy)
 		pid = subprocess.Popen(cmd, shell=True)
 		return True
 
@@ -45,7 +50,8 @@ def home():
 				uploaded_pdb.save(local_fn)
 
 				# Copy CNS scripts & FF and send job to Celery
-				shutil.copy(app.config['CNS_INP'], job_dir)
+				shutil.copy(app.config['ENERGY_INP'], job_dir)
+				shutil.copy(app.config['BUILDR_INP'], job_dir)
 				shutil.copytree(app.config['TOPPAR'], os.path.join(job_dir, 'toppar'))
 				status = run_cns_analysis(job_dir)
 				if not status:
@@ -66,7 +72,7 @@ def results(job_id=None):
 		return ''.join(job_list)
 
 	job_dir = os.path.join(app.config['JOB_DIR'], job_id)
-	results_fn = os.path.join(job_dir, 'molecule.pwr_ene')
+	results_fn = os.path.join(job_dir, 'molecule_cmplt.pwr_ene')
 	results_fe = os.path.exists(results_fn)
 	if results_fe:
 		results_fsize = os.path.getsize(results_fn)

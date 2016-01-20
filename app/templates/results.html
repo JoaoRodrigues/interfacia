@@ -54,7 +54,7 @@
   </head>
   <body>
   	<div id="chart"></div>
-  	<!-- <div id="dataset-picker"></div> -->
+  	<div id="dataset-picker"></div>
   	<div id="viewer"></div>
 	<script type='text/javascript'>
 	
@@ -200,7 +200,7 @@
 				var resViewName = 'pickedRes_'+nodes[i].seg+nodes[i].resi
 				pickedRes = window.structure.select({chain: nodes[i].seg, rnum: nodes[i].resi})
 				if (viewer.get(resViewName) === null) {
-					viewer.spheres(resViewName, pickedRes);
+					viewer.ballsAndSticks(resViewName, pickedRes);
 					// TODO Highlight on chord too
 				} else {
 					// Hide Spheres
@@ -284,7 +284,7 @@
 		function loadMolecule() {
 		  // asynchronously load the PDB file
 		  // from the server and display it in the viewer.
-		  $.ajax("{{ request.base_url }}/molecule.pdb")
+		  $.ajax("{{ request.base_url }}/molecule_cmplt.pdb")
 		  .done(function (data) {
 				structure = pv.io.pdb(data);
 				// Match chain colors to D3 representation
