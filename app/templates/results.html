@@ -29,16 +29,16 @@
 		}
 
 		.group path {
-		  fill-opacity: .5;
-		}
-
-		.group path.highlight {
-			stroke: black;
-			stroke-width: 2;
+		  fill-opacity: .75;
 		}
 
 		path.chord {
 		  stroke: none;
+		}
+
+		path.highlight {
+			stroke: black;
+			stroke-width: 1.5;
 		}
 
 		#circle:hover path.fade {
@@ -59,7 +59,7 @@
 	<script type='text/javascript'>
 	
 		// Load data
-		var nodes = JSON.parse({{ nodes | tojson | safe }})
+		nodes = JSON.parse({{ nodes | tojson | safe }})
 		var vdw_raw_data = JSON.parse({{ vdw_graph | tojson | safe }})
 		var elec_raw_data = JSON.parse({{ elec_graph | tojson | safe }})
 		var total_raw_data = JSON.parse({{ total_graph | tojson | safe }})
@@ -171,6 +171,7 @@
 				.data(layout.chords)
 				.enter().append("path")
 				.attr("class", "chord")
+				.attr("id", function(d, i) { return "chord" + i; })
 				.style("fill", function (d) { return colors(mapping[d.source.value]) })
 				.attr("d", path_svg)
 				.on("click", chord_click);
@@ -201,10 +202,15 @@
 				pickedRes = window.structure.select({chain: nodes[i].seg, rnum: nodes[i].resi})
 				if (viewer.get(resViewName) === null) {
 					viewer.ballsAndSticks(resViewName, pickedRes);
-					// TODO Highlight on chord too
+					d3.select("#group" + i)
+						.classed("highlight", true);
+
 				} else {
 					// Hide Spheres
 					viewer.rm(resViewName);
+					// Highlight Group
+					d3.select("#group" + i)
+						.classed("highlight", false);
 				}
 				viewer.requestRedraw();
 			};
@@ -221,12 +227,17 @@
 			    pv.vec3.add(midPoint, midPoint, targetAtom.pos());
 			    pv.vec3.scale(midPoint, midPoint, 0.5);
 			    // add a tube to connect the two atoms
-			    // Color based on energy?
+			    // Color based on energy
 			    g.addTube(sourceAtom.pos(), targetAtom.pos(), 1.0,
-			              { cap : true, color : 'yellow' });
+			              { cap : true, color : colors(mapping[d.source.value]) });
+			   	
+			   	d3.select('#chord' + i)
+			   		.classed('highlight', true)
 				} else {
 					// Hide
 					viewer.rm(bondViewName);
+			   	d3.select('#chord' + i)
+			   		.classed('highlight', false)
 				}
 				viewer.requestRedraw();
 			};
