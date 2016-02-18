@@ -4,11 +4,8 @@
 ! JR @ 2015
 !
 
-evaluate ($coorin = "molecule_cmplt.pdb")
-evaluate ($interface_dist_cutoff = 5.0)
-
-! Mute (most) output
-set message=off echo=off end
+evaluate ($coorin = "molecule.pdb")
+evaluate ($interface_dist_cutoff = 10.0)
 
 !
 ! Read parameter and topology databases
@@ -16,6 +13,7 @@ set message=off echo=off end
 
 parameter
     @@toppar/protein-allhdg5-4.param
+    @@toppar/dna-rna-allatom-hj-opls-1.3.param
     @@toppar/ion.param
     @@toppar/ligand.param
 end
@@ -23,6 +21,8 @@ end
 topology
     @@toppar/protein-allhdg5-4.top
     @@toppar/protein_break.top
+    @@toppar/dna-rna-allatom-hj-opls-1.3.top
+    @@toppar/dna_break.top
     @@toppar/ion.top
     @@toppar/ligand.top
 end
@@ -34,10 +34,14 @@ end
 segment
   chain
     @@toppar/protein-allhdg5-4.link
+    @@toppar/dna-rna-1.3.link
     separate=true
     coordinates @@$coorin
   end
 end
+
+! Mute (most) output
+set message=off echo=off end
 
 coordinates @@$coorin
 
@@ -50,47 +54,69 @@ flags
 end
 
 !
-! Get interfacial residues of chain A (receptor)
-! Assume chains A & B
+! Iterate over all residues (in order)
+! Find neighbors within cutoff and calculate interaction energy
+! Tag residue not to re-calculate energies again
 !
-do (store1 = 1) (byres (segid A and
-                        (not segid A) around $interface_dist_cutoff))
-
 evaluate ($buffer_file = $coorin - ".pdb" + ".pwr_ene")
 buffer energies to=file=$buffer_file end
 buffer energies
     display ## Pairwise Interface Residue-Residue Energies ($coorin)
 end
 
-for $id_a in id (attr store1 = 1 and tag) loop res_a
-    show (resid) (id $id_a)
-    evaluate ($resi_a = $result)
-    show (resn) (id $id_a)
-    evaluate ($resn_a = $result)
+evaluate ($prev_res = -999)
+evaluate ($prev_seg = "ZZZZ")
+for $id_vp in id ( known ) loop all_residues
 
-    do (store2 = 0) (segid B)
-    for $id_b in id ( segid B and (segid A and resid $resi_a) around $interface_dist_cutoff ) loop res_b
-        show (resid) (id $id_b)
-        evaluate ($resi_b = $result)
-        show (resn) (id $id_b)
-        evaluate ($resn_b = $result)
+    ! Identify viewpoint
+    show (resid) (id $id_vp)
+    evaluate ($resi_vp = $result)
+    show (resn) (id $id_vp)
+    evaluate ($resn_vp = $result)
+    show (segid) (id $id_vp)
+    evaluate ($segid_vp = $result)
 
-        ! Avoid multiple calcs per residue
-        identity (store3) (segid B and resid $resi_b and attribute store2 > 0)
-        if ( $select = 0 ) then
-            igroup interaction (segid A and resid $resi_a) (segid B and resid $resi_b) end
-            energy end
-            ! Calculate total energy as per HADDOCK scoring function
-            evaluate ($total = ($vdw + $elec))
-            buffer energies
-                display # A $resi_a $resn_a <> B $resi_b $resn_b - vdW = $vdw elec = $elec total = $total
-            end
-            do (store2 = 1) (segid B and resid $resi_b)
+    ! Clear seen neighbors on new residue
+    if ( $segid_vp # $prev_seg ) then
+        do (store3 = 0) (known)
+        evaluate ($prev_seg = $segid_vp)
+    else
+        if ( $resi_vp # $prev_res ) then
+            do (store3 = 0) (known)
+            evaluate ($prev_res = $resi_vp)
         end if
-    end loop res_b
+    end if
 
-end loop res_a
+    ! Iterate over neighbors of viewpoint in other segments
+    for $id_nn in id ( attr store2 < 1 and not (segid $segid_vp) and (segid $segid_vp and resi $resi_vp) around $interface_dist_cutoff ) loop neighbors
+
+        show (resid) (id $id_nn)
+        evaluate ($resi_nn = $result)
+        show (resn) (id $id_nn)
+        evaluate ($resn_nn = $result)
+        show (segid) (id $id_nn)
+        evaluate ($segid_nn = $result)
+
+        ! Avoid calculation over multiple atoms of the same neighbor residue
+        identity (store4) (segid $segid_nn and resid $resi_nn and attribute store3 > 0)
+
+        if ($select = 0) then
+            igroup interaction (segid $segid_vp and resid $resi_vp) (segid $segid_nn and resid $resi_nn) end
+            energy end
+
+            buffer energies
+                display $segid_vp $resi_vp $resn_vp <> $segid_nn $resi_nn $resn_nn - vdW = $vdw elec = $elec
+            end
+            do (store3 = 1) (segid $segid_nn and resid $resi_nn)
+        end if
+    end loop neighbors
+
+    ! Tag viewpoint: ignore future pairs including this residue
+    do (store2 = 1) (segid $segid_vp and resid $resi_vp)
+
+end loop all_residues
 
 buffer energies dump end
 
 stop
+
