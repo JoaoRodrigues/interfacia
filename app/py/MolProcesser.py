@@ -104,8 +104,8 @@ class MolProcesser(object):
 						raise MolError(msg.format(chain_id, res.id[1], res.resname, res.id[2]))
 
 					# Check for unknown residues based on name
-					if res.resname not in self.topology:
-						msg = 'Unsupported or unknown residue name: {0} ({1}.{2})'
+					if res.resname.strip() not in self.topology:
+						msg = 'Unsupported or unknown residue name: {0!r} ({1}.{2})'
 						raise MolError(msg.format(res.resname, chain_id, res.id[1]))
 
 					# Add segment id

@@ -76,10 +76,19 @@
       // Change text on regular file upload
       $input = $('#structure');
       $input.on('change', function(e) {
-        $fieldset.find('.file_upload_text').css('display', 'none');
-        $fieldset.find('.drag_n_drop_text').css('display', 'none');
-        $fieldset.find('.uploaded_file_name').css('display', 'inline');
-        $fieldset.find('.uploaded_file_name').text($(this).val().split('\\').pop());
+        if ($(this).val()) {
+          $fieldset.find('.file_upload_text').css('display', 'none');
+          $fieldset.find('.drag_n_drop_text').css('display', 'none');
+          $fieldset.find('.uploaded_file_name').css('display', 'inline');
+          $fieldset.find('.uploaded_file_name').text($(this).val().split('\\').pop());
+        } else {
+          // Nothing selected
+          $fieldset.find('.file_upload_text').css('display', 'inline');
+          $fieldset.find('.drag_n_drop_text').css('display', 'inline');
+          $fieldset.find('.uploaded_file_name').css('display', 'none');
+          $fieldset.find('.uploaded_file_name').text('');
+        }
+
       });
 
       // Handle submit
@@ -90,8 +99,7 @@
         $form.addClass('is-uploading').removeClass('is-error');
 
         e.preventDefault();
-        console.log($form.get(0));
-        var ajaxData = new FormData($fieldset.get(0));
+        var ajaxData = new FormData($fieldset.get(-1));
 
         if (droppedFiles) {
           ajaxData.append( $input.attr('name'), droppedFiles[0] );

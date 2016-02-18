@@ -20,8 +20,7 @@
 		var nodes = JSON.parse( {{ nodes | tojson | safe }} )
 		var vdw_raw_data = JSON.parse( {{ vdw_graph | tojson | safe }} )
 		var elec_raw_data = JSON.parse( {{ elec_graph | tojson | safe }} )
-		var total_raw_data = JSON.parse( {{ total_graph | tojson | safe }} )
-		var molecule = "{{ request.base_url }}/molecule_cmplt.pdb"
+		var molecule = "{{ request.base_url }}/viewer.pdb"
     </script>
 </body>
 <script src="{{ url_for('static', filename='js/interfacia/viewer.js') }}/"></script>

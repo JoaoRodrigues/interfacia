@@ -4,8 +4,8 @@
 ! JR @ 2015
 !
 
-evaluate ($coorin = "molecule.pdb")
-evaluate ($interface_dist_cutoff = 10.0)
+evaluate ($coorin = "molecule_cmplt.pdb")
+evaluate ($interface_dist_cutoff = 5.0)
 
 !
 ! Read parameter and topology databases
@@ -65,7 +65,7 @@ buffer energies
 end
 
 evaluate ($prev_res = -999)
-evaluate ($prev_seg = "ZZZZ")
+evaluate ($prev_seg = "")
 for $id_vp in id ( known ) loop all_residues
 
     ! Identify viewpoint

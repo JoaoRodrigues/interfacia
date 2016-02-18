@@ -4,9 +4,6 @@ var datasets = [{
 }, {
     "name": "Electrostatics",
     "data": window.elec_raw_data
-}, {
-    "name": "Total Energy",
-    "data": window.total_raw_data
 }]
 
 // Setup SVG Canvas
@@ -37,6 +34,8 @@ function plot(nodes, raw_data) {
     var mapping = o[1];
     var colors = get_color_scale(raw_data);
 
+    // Get chain colors
+    // TODO
 
     d3.select("#chart").selectAll('svg').remove(); // Clear 'canvas'
 
@@ -245,7 +244,7 @@ function get_color_scale(mtx) {
     var extremes = d3.extent(_flattened_array)
     var c = d3.scale.linear()
         .domain([extremes[0], 0, extremes[1]])
-        // .range(["blue", "white", "red"]) // Flat					
+        // .range(["blue", "white", "red"]) // Flat
         .range(["#138BFF", "#fff", "#FF0007"]) // Vivid
         // .range(["#356089", "#fff", "#D1464A"]) // Pastel
     return c

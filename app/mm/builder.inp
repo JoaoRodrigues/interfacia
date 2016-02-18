@@ -9,6 +9,7 @@ define(
 
 evaluate ($coorin = "molecule.pdb")
 evaluate ($coorout = "molecule_cmplt.pdb")
+evaluate ($pdbout = "viewer.pdb")
 
 ! Mute (most) output
 set message=off echo=off end
@@ -109,9 +110,9 @@ if ( $tobuild > 0 ) then
         end
 
         {- turn on initial energy terms -}
-        flags 
-            exclude * 
-            include bond angle vdw 
+        flags
+            exclude *
+            include bond angle vdw
         end
 
         minimize powell nstep=50  nprint=10 end
@@ -120,8 +121,8 @@ if ( $tobuild > 0 ) then
         do (vy=maxwell($bath)) (store1)
         do (vz=maxwell($bath)) (store1)
 
-        flags 
-            exclude vdw 
+        flags
+            exclude vdw
             include impr
         end
 
@@ -133,8 +134,8 @@ if ( $tobuild > 0 ) then
             cmremove=false
         end
 
-        flags 
-            include vdw 
+        flags
+            include vdw
         end
 
         minimize powell nstep=50 nprint=10 end
@@ -209,6 +210,6 @@ if ( $tobuild > 0 ) then
     end if ! moving
 end if
 
-write coordinates format=PDBO output=$coorout selection=(known) end
-
+write coordinates format=CNS output=$coorout selection=(known) end
+write coordinates format=PDBO output=$pdbout selection=(known) end
 stop

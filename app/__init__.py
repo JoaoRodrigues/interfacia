@@ -73,7 +73,9 @@ def home():
 					mol = MolProcesser(uploaded_pdb)
 				except MolError, e:
 					# Flash error messages
-					return 'Error...'
+					print "oh uh.."
+					print e
+					return '<h1>Error...</h1>'
 
 				# Create job folder
 				date_now = datetime.datetime.now()
@@ -95,8 +97,9 @@ def home():
 				if not task:
 					return "Error..."
 				else:
-					return render_template("index.html", submit=True, job_name=job_name)
-					# return "Results: <a href={0}>{0}</a>".format(url_for('results', job_id=job_name))
+					# print "Hello?"
+					# return render_template("index.html", submit=True, job_name=job_name)
+					return "Results: <a href={0}>{0}</a>".format(url_for('results', job_id=job_name))
 
 	return render_template("index.html")
 
@@ -118,10 +121,10 @@ def results(job_id=None):
 	if not os.path.exists(job_dir):
 		return 'Job not found...'
 	elif os.path.exists(job_dir) and (not results_fe or not results_fsize):
-		if os.path.isfile('energy.log'):
-			return open(os.path.join(job_dir, 'energy.log')).read()
-		elif os.path.isfile('builder.log'):
-			return open(os.path.join(job_dir, 'builder.log')).read()
+		if os.path.isfile(os.path.join(job_dir, 'energy.log')):
+			return '<pre>{0}</pre>'.format(open(os.path.join(job_dir, 'energy.log')).read())
+		elif os.path.isfile(os.path.join(job_dir, 'builder.log')):
+			return '<pre>{0}</pre>'.format(open(os.path.join(job_dir, 'builder.log')).read())
 		else:
 			return 'Job not started yet...'
 	else:
@@ -136,19 +139,19 @@ def results(job_id=None):
 		nodes, edges = set(), {}
 		with open(results_fn) as energetics:
 			for line in energetics:
-				if not line.startswith('# '):
+				if line.startswith('#') or not line.strip():
 					continue
 
-				(_, r_segm, r_resi, r_resn, _, l_segm, l_resi, l_resn,
-				 _, _, _, ene_vdw, _, _, ene_elec, _, _, ene_total ) = line.split()
+				(r_segm, r_resi, r_resn, _, l_segm, l_resi, l_resn,
+				 _, _, _, ene_vdw, _, _, ene_elec ) = line.split()
 
 				r_resi, l_resi = int(r_resi), int(l_resi)
-				ene_vdw, ene_elec, ene_total = float(ene_vdw), float(ene_elec), float(ene_total)
+				ene_vdw, ene_elec = float(ene_vdw), float(ene_elec)
 
 				nodes.add((r_segm, r_resi, r_resn))
 				nodes.add((l_segm, l_resi, l_resn))
-				edges[((r_segm, r_resi, r_resn), (l_segm, l_resi, l_resn))] = (ene_vdw, ene_elec, ene_total)
-				edges[((l_segm, l_resi, l_resn), (r_segm, r_resi, r_resn))] = (ene_vdw, ene_elec, ene_total)
+				edges[((r_segm, r_resi, r_resn), (l_segm, l_resi, l_resn))] = (ene_vdw, ene_elec)
+				edges[((l_segm, l_resi, l_resn), (r_segm, r_resi, r_resn))] = (ene_vdw, ene_elec)
 
 		# Second pass: build JSON data structures
 		nodes = sorted(nodes)
@@ -157,7 +160,6 @@ def results(job_id=None):
 		# Could be made generic by a series of matrices
 		vdw_graph = [[0 for _ in range(n_nodes)] for _ in range(n_nodes)]
 		elec_graph = [[0 for _ in range(n_nodes)] for _ in range(n_nodes)]
-		total_graph = [[0 for _ in range(n_nodes)] for _ in range(n_nodes)]
 
 		for e in edges:
 			res_a, res_b = e
@@ -166,14 +168,11 @@ def results(job_id=None):
 			vdw_graph[i_b][i_a] = edges[e][0]
 			elec_graph[i_a][i_b] = edges[e][1]
 			elec_graph[i_b][i_a] = edges[e][1]
-			total_graph[i_a][i_b] = edges[e][2]
-			total_graph[i_b][i_a] = edges[e][2]
 
 		nodes = [{'seg': i, 'resi': j, 'resn': k} for (i,j,k) in nodes]
 
 		return render_template('results.html', vdw_graph=json.dumps(vdw_graph),
 											   elec_graph=json.dumps(elec_graph),
-											   total_graph=json.dumps(total_graph),
 											   nodes=json.dumps(nodes)
 											  )
 
