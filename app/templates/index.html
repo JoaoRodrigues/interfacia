@@ -6,8 +6,9 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.8.3/modernizr.min.js"></script>
-
     <script>
+      // Test if JavaScript is allowed and if drag-n-drop and webgl as supported.
+      // TODO
       var isAdvancedUpload = function() {
       var div = document.createElement('div');
         return (('draggable' in div) || ('ondragstart' in div && 'ondrop' in div)) && 'FormData' in window && 'FileReader' in window;
@@ -28,103 +29,38 @@
         <span class="header subtext">Interactive graphical analysis of molecular interfaces</span>
       </div> <!-- main -->
 
-      <form method="post" enctype="multipart/form-data">
-        <fieldset id="drag_n_drop">
+      <form identity="upload_form" action="" method="POST" enctype="multipart/form-data">
+        <fieldset class="no_dragover" id="drag_n_drop">
+          <div id="progress_bar">&nbsp;</div>
           <label class="button" for="structure">
               <input type="file" id="structure" name="structure"/>
-              <a class="file_upload_text">Choose a structure</a>
+              <a class="file_upload_text">Click to choose a structure</a>
               <a class="drag_n_drop_text"> or drag it here</a>
               <a class="uploaded_file_name"></a>
             </label>
         </fieldset>
-
         <fieldset id="submit_button">
             <label id="label_submit" class="button" for="submit_btn">
               <input type="submit" id="submit_btn" />
               <a class="">Go</a>
             </label>
         </fieldset>
+
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="flashed_messages">
+            {% for message in messages %}
+              <a>{{ message }}</a>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
       </form>
 
     </div> <!-- content -->
 
-    <!-- Detect drag-n-drop -->
-    <script>
-      var $fieldset = $('#drag_n_drop');
-      $fieldset.addClass('has_advanced_upload');
-
-      var droppedFiles = false;
-      $fieldset.on('drag dragstart dragend dragover dragenter dragleave drop', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-      })
-      .on('dragover dragenter', function() {
-        $fieldset.addClass('is_dragover');
-      })
-      .on('dragleave dragend drop', function() {
-        $fieldset.removeClass('is_dragover');
-      })
-      .on('drop', function(e) {
-        droppedFiles = e.originalEvent.dataTransfer.files;
-        // Change text
-        $fieldset.find('.file_upload_text').css('display', 'none');
-        $fieldset.find('.drag_n_drop_text').css('display', 'none');
-        $fieldset.find('.uploaded_file_name').css('display', 'inline');
-        $fieldset.find('.uploaded_file_name').text(droppedFiles[0].name);
-      });
-
-      // Change text on regular file upload
-      $input = $('#structure');
-      $input.on('change', function(e) {
-        if ($(this).val()) {
-          $fieldset.find('.file_upload_text').css('display', 'none');
-          $fieldset.find('.drag_n_drop_text').css('display', 'none');
-          $fieldset.find('.uploaded_file_name').css('display', 'inline');
-          $fieldset.find('.uploaded_file_name').text($(this).val().split('\\').pop());
-        } else {
-          // Nothing selected
-          $fieldset.find('.file_upload_text').css('display', 'inline');
-          $fieldset.find('.drag_n_drop_text').css('display', 'inline');
-          $fieldset.find('.uploaded_file_name').css('display', 'none');
-          $fieldset.find('.uploaded_file_name').text('');
-        }
-
-      });
-
-      // Handle submit
-      var $form = $('form');
-      $form.on('submit', function(e) {
-        if ($form.hasClass('is-uploading')) return false;
-
-        $form.addClass('is-uploading').removeClass('is-error');
-
-        e.preventDefault();
-        var ajaxData = new FormData($fieldset.get(-1));
-
-        if (droppedFiles) {
-          ajaxData.append( $input.attr('name'), droppedFiles[0] );
-        }
-
-        $.ajax({
-          url: $form.attr('action'),
-          type: $form.attr('method'),
-          data: ajaxData,
-          dataType: 'json',
-          cache: false,
-          contentType: false,
-          processData: false,
-          complete: function() {
-            $form.removeClass('is-uploading');
-          },
-          success: function(data) {
-            $form.addClass( data.success == true ? 'is-success' : 'is-error' );
-            if (!data.success) $errorMsg.text(data.error);
-          },
-          error: function() {
-            // Log the error, show an alert, whatever works for you
-          }
-        });
-      });
-    </script>
+    <!-- Upload Files using AJAX & Drag-n-Drop or the regular input field -->
+    <script src="{{ url_for('static', filename='js/interfacia/uploadr.js') }}/"></script>
   </body>
 </html>

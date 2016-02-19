@@ -51,55 +51,83 @@ html, body {
 
 #main span.subtext {
     /*padding-left: 20%;*/
-
+    /*color: #FFE3AA;*/
     font-size: 2em;
     font-style: italic;
 }
 
 /* User Interaction Elements (e.g. button, dropdowns, etc) */
 
+.flashed_messages {
+    width: 40%;
+    margin: 1% auto;
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.2em;
+    color: white;
+
+    background: rgba(77, 0, 0, 0.5);
+    text-align: center;
+}
+
 form {
     font-family: 'Oswald', sans-serif;
-    font-size: 1.4em;
     color: white;
 }
 
+form fieldset a {
+    font-size: 1.4em;
+}
+
 fieldset input {
-    position: fixed;
-    top: -1000px;
+    width: 0.1px;
+    height: 0.1px;
+    opacity: 0;
+    overflow: hidden;
+    position: absolute;
+    z-index: -2;
 }
 
 fieldset {
+    position: relative;
     margin: 0;
+    padding: 0;
     border: none;
+    line-height: 2em; /*Larger box without playing with padding because of progress bar*/
 }
 
 #drag_n_drop {
     margin: 2% auto 0;
     width: 60%;
     text-align: center;
+    border: 1px dashed white;
 }
 
-.has_advanced_upload {
-    border: 1px dashed white;
+.no_dragover {
+    /* Most retarded hack in the world */
     background: rgba(0, 153, 247, 0.3);
 }
-
 .is_dragover {
-    /*background: rgba(238, 242, 243, 0.5);*/
+    /* background: rgba(238, 242, 243, 0.5); */
     background: rgba(77, 0, 0, 0.5);
 }
 
-.drag_n_drop_text {
-    /* Will be modified if the browser supports */
-    display: none;
+#progress_bar {
+    position: absolute;
+    width: 0%; /* Changes as file uploads */
+    background: rgba(141,194,111, 0.4);
+    /* z-index: 1; */
 }
 
-.has_advanced_upload .drag_n_drop_text {
+#drag_n_drop .drag_n_drop_text {
+    /* Will be modified if the browser supports */
     display: inline;
 }
 
-.uploaded_file_name {
+#drag_n_drop .file_upload_text {
+    cursor: pointer;
+}
+
+#drag_n_drop .uploaded_file_name {
     /* Will be modified upon file upload */
     display: none;
 }
@@ -116,12 +144,16 @@ fieldset {
     border: 2px solid #0099F7;
     background-color: #0099F7;
     border-radius: 25%;
-    padding: 0 2% 0 2%;
+    padding: 1% 1% 1% 1%;
 }
 
 #submit_button #label_submit:hover {
-    background-color: #4D0000;
+    background-color: white;
+    color: #0099F7;
     border: 2px solid white;
+}
+
+#submit_button #label_submit:active {
 }
 
 /* Flashed Messages */

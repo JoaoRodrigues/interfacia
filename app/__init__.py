@@ -1,14 +1,16 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 import datetime
 import json
 import os
 import shutil
 import subprocess
+# from uuid import uuid4
 
 from flask import Flask
-from flask import abort, render_template, request, redirect, send_file, url_for
-from werkzeug import secure_filename
+from flask import abort, render_template, request, redirect, send_file, url_for, flash
 from celery import Celery
 
 from Bio.Data.SCOPData import protein_letters_3to1 as aa3to1
@@ -19,10 +21,12 @@ curdir = os.path.abspath(os.curdir)
 
 # Setup Flask App
 app = Flask(__name__)
+app.secret_key = 'mylittleweaksecret'
+
 app.config['JOB_DIR'] = os.path.join(curdir, 'app', 'tmp')
 app.config['CNS_EXE'] = os.path.join(curdir, 'app', 'bin', 'cns.exe')
 app.config['ENERGY_INP'] = os.path.join(curdir, 'app', 'mm', 'calc_pairwise_residue.inp')
-app.config['BUILDR_INP'] = os.path.join(curdir, 'app', 'mm', 'builder.inp')
+# app.config['BUILDR_INP'] = os.path.join(curdir, 'app', 'mm', 'builder.inp')
 app.config['TOPPAR'] = os.path.join(curdir, 'app', 'mm', 'toppar')
 app.config['ALLOWED_EXT'] = set(('pdb', 'ent'))
 
@@ -44,37 +48,56 @@ def run_cns_analysis(dpath):
 	"""
 
 	os.chdir(dpath)
-	builder = os.path.basename(app.config['BUILDR_INP'])
-	builder = os.path.join(dpath, builder)
+	# builder = os.path.basename(app.config['BUILDR_INP'])
+	# builder = os.path.join(dpath, builder)
 	energy = os.path.basename(app.config['ENERGY_INP'])
 	energy = os.path.join(dpath, energy)
-
 	if not os.path.exists('molecule.pdb') \
-		or not os.path.exists(builder) or not os.path.exists(energy) \
+		or not os.path.exists(energy) \
 		or not os.path.exists(os.path.dirname(app.config['TOPPAR'])):
+			print("Cannot Launch CNS: {0}".format(dpath))
 			return False
 	else:
 		print("Launching {0}...".format(dpath))
-		cmd = '{0} < {1} > builder.log\n{0} < {2} > energy.log'.format(app.config['CNS_EXE'], builder, energy)
+		cmd = '{0} < {1} > cns.log'.format(app.config['CNS_EXE'], energy)
 		pid = subprocess.Popen(cmd, shell=True)
 		status = pid.wait()
 		return status
+
+	return False
+
+# AJAX
+def _ajax_response(status, msg):
+    status_code = "OK" if status else "ERROR"
+    return json.dumps(dict(
+        status=status_code,
+        msg=msg,
+    ))
 
 # Views
 @app.route('/', methods=['GET', 'POST'])
 def home():
 	if request.method == 'POST':
-		uploaded_pdb = request.files['structure']
-		uploaded_ext = uploaded_pdb.filename.split('.')[-1]
+		# Detect how the form was submitted (JS/noJS)
+		is_ajax = request.form.get("__ajax", False)
+		uploaded_pdb = request.files.get('structure')
+
+		if not uploaded_pdb:
+			print("Empty Upload")
+			flash('Did you forget to provide a structure?')
+			return json.dumps({"status": 'ERROR', "msg": 'Empty Upload'})
+
 		if uploaded_pdb:
+			uploaded_ext = uploaded_pdb.filename.split('.')[-1]
+			print("Upload Exists")
 			if uploaded_ext in app.config['ALLOWED_EXT']:
 				# Validate structure
 				try:
 					mol = MolProcesser(uploaded_pdb)
 				except MolError, e:
 					# Flash error messages
-					print "oh uh.."
-					print e
+					print("MolProcesser Error")
+					print(e)
 					return '<h1>Error...</h1>'
 
 				# Create job folder
@@ -90,17 +113,20 @@ def home():
 
 				# Copy CNS scripts & FF and send job to Celery
 				shutil.copy(app.config['ENERGY_INP'], job_dir)
-				shutil.copy(app.config['BUILDR_INP'], job_dir)
+				# shutil.copy(app.config['BUILDR_INP'], job_dir)
 				shutil.copytree(app.config['TOPPAR'], os.path.join(job_dir, 'toppar'))
 				task = run_cns_analysis.delay(job_dir)
+				# task = True
+				print("Task Sent")
 
 				if not task:
-					return "Error..."
+					return json.dumps({"status": 'ERROR', "msg": 'Oops...'})
 				else:
-					# print "Hello?"
 					# return render_template("index.html", submit=True, job_name=job_name)
-					return "Results: <a href={0}>{0}</a>".format(url_for('results', job_id=job_name))
+					#return "Results: <a href={0}>{0}</a>".format(url_for('results', job_id=job_name))
+					return json.dumps({"status": 'OK', "msg": job_name})
 
+	print("No POST")
 	return render_template("index.html")
 
 @app.route('/results/')
@@ -114,17 +140,15 @@ def results(job_id=None):
 		return ''.join(job_list)
 
 	job_dir = os.path.join(app.config['JOB_DIR'], job_id)
-	results_fn = os.path.join(job_dir, 'molecule_cmplt.pwr_ene')
+	results_fn = os.path.join(job_dir, 'molecule.pwr_ene')
 	results_fe = os.path.exists(results_fn)
 	if results_fe:
 		results_fsize = os.path.getsize(results_fn)
 	if not os.path.exists(job_dir):
 		return 'Job not found...'
 	elif os.path.exists(job_dir) and (not results_fe or not results_fsize):
-		if os.path.isfile(os.path.join(job_dir, 'energy.log')):
-			return '<pre>{0}</pre>'.format(open(os.path.join(job_dir, 'energy.log')).read())
-		elif os.path.isfile(os.path.join(job_dir, 'builder.log')):
-			return '<pre>{0}</pre>'.format(open(os.path.join(job_dir, 'builder.log')).read())
+		if os.path.isfile(os.path.join(job_dir, 'cns.log')):
+			return '<pre>{0}</pre>'.format(open(os.path.join(job_dir, 'cns.log')).read())
 		else:
 			return 'Job not started yet...'
 	else:
