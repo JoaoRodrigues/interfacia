@@ -13,6 +13,7 @@ define(
     {===>} dbreak_cutoff=4.5;
     {===>} auto_cispro=true;
     {===>} auto_disu=true;
+    {===>} disulphide_dist=3.0;
     {===>} final_em=true;
     {===>} coorin="molecule.pdb";
     {===>} coorout="molecule_cmplt.pdb";
@@ -225,7 +226,7 @@ if ( &auto_disu = true ) then
 
       pick bond (id $id1) (id $id2) geometry
 
-      if ( $result <= $disulphide_dist ) then
+      if ( $result <= &disulphide_dist ) then
         evaluate ($disu=$disu+1)
         evaluate ($seg1.$disu=$segid1)
         evaluate ($seg2.$disu=$segid2)
@@ -459,6 +460,15 @@ if ( $tobuild > 0 ) then
             nprint=50
         end
     end if ! moving
+
+    fix sele=((attr store1 = 0) and not name H*) end
+    minimize powell
+      nstep=50
+      drop=40.0
+      nprint=5
+    end
+    fix sele=(not all) end
+
 end if
 
 !
@@ -468,7 +478,7 @@ end if
 parameter
   nbonds
       nbxmod=5 atom cdie shift
-      cutnb=9.5 ctofnb=8.5 ctonnb=6.5 eps=1.0 e14fac=0.4 inhibit 0.5
+      cutnb=9.5 ctofnb=8.5 ctonnb=6.5 eps=78.0 e14fac=0.4 inhibit 0.5
       wmin=0.5
       tolerance  0.5
       repel=0.0
@@ -477,7 +487,7 @@ end
 
 flags excl * incl bond angl impr dihe vdw elec end
 
-fix selection=(not(store1)) end
+fix selection=((attr store1 = 0) and not name H*) end
 minimize powell
     nstep=50
     drop=40.0
@@ -510,6 +520,14 @@ delete sele=(not known) end
 flags
     exclude *
     include vdw elec
+end
+
+parameter
+  nbonds
+    nbxmod=5 atom cdie shift
+    cutnb=9.5 ctofnb=8.5 ctonnb=6.5 eps=1.0 e14fac=0.4 inhibit 0.25
+    wmin=0.5 tolerance  0.5
+  end
 end
 
 !
