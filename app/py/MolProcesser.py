@@ -125,9 +125,13 @@ class MolProcesser(object):
 
 if __name__ == '__main__':
 
-	# Test the Class
-	# Dummy 1: Double Occ, Multiple Models, HETATMs (should pass)
-	dummy_1 = """
+	import sys
+	import unittest
+
+	if not sys.argv[1:]:
+		# Test the Class
+		# Dummy 1: Double Occ, Multiple Models, HETATMs (should pass)
+		dummy_1 = """
 MODEL        1
 ATOM      1  N   VAL A   1      16.783  48.812  26.447  1.00 30.15      A    N
 ATOM      2  CA  VAL A   1      17.591  48.101  25.416  1.00 27.93      A    C
@@ -169,9 +173,9 @@ HETATM   17  O   HOH A   2      51.263  27.344   1.862  1.00 39.29      A    O
 HETATM   18  O   HOH A   2      45.191  34.800 -10.616  1.00 45.76      A    O
 ENDMDL
 END
-"""
-	# Dummy 2: One Chain
-	dummy_2 = """
+	"""
+		# Dummy 2: One Chain
+		dummy_2 = """
 MODEL        1
 ATOM      1  N   VAL A   1      16.783  48.812  26.447  1.00 30.15      A    N
 ATOM      2  CA  VAL A   1      17.591  48.101  25.416  1.00 27.93      A    C
@@ -182,9 +186,9 @@ ATOM      6  CG1 VAL A   1      19.512  46.623  24.799  1.00 29.27      A    C
 ATOM      7  CG2 VAL A   1      19.838  48.188  26.670  1.00 28.76      A    C
 ENDMDL
 END
-"""
-	# Dummy 3: Insertion Codes
-	dummy_3 = """
+	"""
+		# Dummy 3: Insertion Codes
+		dummy_3 = """
 MODEL        1
 ATOM      1  N   VAL A   1      16.783  48.812  26.447  1.00 30.15      A    N
 ATOM      2  CA  VAL A   1      17.591  48.101  25.416  1.00 27.93      A    C
@@ -208,10 +212,10 @@ ATOM     11  O   ALA B  10B     16.847  46.590  20.823  1.00 18.74      B    O
 ATOM     12  CB  ALA B  10B     14.415  47.516  21.981  1.00 22.04      B    C
 ENDMDL
 END
-"""
+	"""
 
-	# Dummy 4: Unrecognized Residue (HOH)
-	dummy_4 = """
+		# Dummy 4: Unrecognized Residue (HOH)
+		dummy_4 = """
 MODEL        1
 ATOM      1  N   VAL A   1      16.783  48.812  26.447  1.00 30.15      A    N
 ATOM      2  CA  VAL A   1      17.591  48.101  25.416  1.00 27.93      A    C
@@ -231,92 +235,101 @@ ATOM     14  CG1 ILE B  10      13.710  48.294  23.129  1.00 22.39      B    C
 ATOM     15  CG2 ILE B  10      13.485  46.762  21.052  1.00 19.05      B    C
 ATOM     16  CD1 ILE B  10      12.870  49.416  22.486  1.00 23.20      B    C
 ENDMDL
-END"""
+END
+"""
 
-	import unittest
-	class TestMolecularProcesser(unittest.TestCase):
+		class TestMolecularProcesser(unittest.TestCase):
 
-		def test_validinput(self):
-			"""Process a valid structure with double occupancies, multiple models, and HETATM"""
+			def test_validinput(self):
+				"""Process a valid structure with double occupancies, multiple models, and HETATM"""
 
-			stream = StringIO()
-			stream.write(dummy_1)
-			stream.seek(0)
-			mol = MolProcesser(stream)
+				stream = StringIO()
+				stream.write(dummy_1)
+				stream.seek(0)
+				mol = MolProcesser(stream)
 
-			n_models = sum(1 for _ in mol.structure.get_models()) #1
-			n_chains = sum(1 for _ in mol.structure.get_chains()) #2
-			n_resids = sum(1 for _ in mol.structure.get_residues()) #2
-			n_atoms = sum(1 for _ in mol.structure.get_atoms()) #15
-			has_docc = sum(1 for a in mol.structure.get_atoms() if a.is_disordered())
-			has_hatm = sum(1 for r in mol.structure.get_residues() if r.id[0] != ' ')
+				n_models = sum(1 for _ in mol.structure.get_models()) #1
+				n_chains = sum(1 for _ in mol.structure.get_chains()) #2
+				n_resids = sum(1 for _ in mol.structure.get_residues()) #2
+				n_atoms = sum(1 for _ in mol.structure.get_atoms()) #15
+				has_docc = sum(1 for a in mol.structure.get_atoms() if a.is_disordered())
+				has_hatm = sum(1 for r in mol.structure.get_residues() if r.id[0] != ' ')
 
-			self.assertEqual(n_models, 1)
-			self.assertEqual(n_chains, 2)
-			self.assertEqual(n_resids, 2)
-			self.assertEqual(n_atoms, 15)
-			self.assertEqual(has_docc, 0)
-			self.assertEqual(has_hatm, 0)
+				self.assertEqual(n_models, 1)
+				self.assertEqual(n_chains, 2)
+				self.assertEqual(n_resids, 2)
+				self.assertEqual(n_atoms, 15)
+				self.assertEqual(has_docc, 0)
+				self.assertEqual(has_hatm, 0)
 
-		def test_single_chain(self):
-			"""Process a single-chain structure"""
+			def test_single_chain(self):
+				"""Process a single-chain structure"""
 
-			stream = StringIO()
-			stream.write(dummy_2)
-			stream.seek(0)
+				stream = StringIO()
+				stream.write(dummy_2)
+				stream.seek(0)
 
-			self.assertRaisesRegexp(MolError, 'contains only one chain', MolProcesser, stream)
+				self.assertRaisesRegexp(MolError, 'contains only one chain', MolProcesser, stream)
 
-		def test_insertion_codes(self):
-			"""Process structure with insertion codes"""
+			def test_insertion_codes(self):
+				"""Process structure with insertion codes"""
 
-			stream = StringIO()
-			stream.write(dummy_3)
-			stream.seek(0)
+				stream = StringIO()
+				stream.write(dummy_3)
+				stream.seek(0)
 
-			self.assertRaisesRegexp(MolError, 'Residue insertions are unsupported', MolProcesser, stream)
+				self.assertRaisesRegexp(MolError, 'Residue insertions are unsupported', MolProcesser, stream)
 
-		def test_unknown_residue(self):
-			"""Process structure with unknown residues"""
+			def test_unknown_residue(self):
+				"""Process structure with unknown residues"""
 
-			stream = StringIO()
-			stream.write(dummy_4)
-			stream.seek(0)
+				stream = StringIO()
+				stream.write(dummy_4)
+				stream.seek(0)
 
-			self.assertRaisesRegexp(MolError, 'Unsupported or unknown residue name', MolProcesser, stream)
+				self.assertRaisesRegexp(MolError, 'Unsupported or unknown residue name', MolProcesser, stream)
 
-		def test_to_string(self):
-			"""Write structure as string"""
+			def test_to_string(self):
+				"""Write structure as string"""
 
-			stream = StringIO()
-			stream.write(dummy_1)
-			stream.seek(0)
+				stream = StringIO()
+				stream.write(dummy_1)
+				stream.seek(0)
 
-			mol = MolProcesser(stream)
-			n_models = sum(1 for _ in mol.structure.get_models()) #1
-			n_chains = sum(1 for _ in mol.structure.get_chains()) #2
-			n_resids = sum(1 for _ in mol.structure.get_residues()) #2
-			n_atoms = sum(1 for _ in mol.structure.get_atoms()) #15
-			has_docc = sum(1 for a in mol.structure.get_atoms() if a.is_disordered())
-			has_hatm = sum(1 for r in mol.structure.get_residues() if r.id[0] != ' ')
+				mol = MolProcesser(stream)
+				n_models = sum(1 for _ in mol.structure.get_models()) #1
+				n_chains = sum(1 for _ in mol.structure.get_chains()) #2
+				n_resids = sum(1 for _ in mol.structure.get_residues()) #2
+				n_atoms = sum(1 for _ in mol.structure.get_atoms()) #15
+				has_docc = sum(1 for a in mol.structure.get_atoms() if a.is_disordered())
+				has_hatm = sum(1 for r in mol.structure.get_residues() if r.id[0] != ' ')
 
-			stream_2 = StringIO()
-			stream_2.write(mol.tostring)
-			stream_2.seek(0)
+				stream_2 = StringIO()
+				stream_2.write(mol.tostring)
+				stream_2.seek(0)
 
-			p = PDBParser(QUIET=1)
-			mol_2 = p.get_structure('xyz', stream_2)
+				p = PDBParser(QUIET=1)
+				mol_2 = p.get_structure('xyz', stream_2)
 
-			n_models_2 = sum(1 for _ in mol_2.get_models()) #1
-			n_resids_2 = sum(1 for _ in mol_2.get_residues()) #2
-			n_atoms_2 = sum(1 for _ in mol_2.get_atoms()) #15
-			has_docc_2 = sum(1 for a in mol_2.get_atoms() if a.is_disordered())
-			has_hatm_2 = sum(1 for r in mol_2.get_residues() if r.id[0] != ' ')
+				n_models_2 = sum(1 for _ in mol_2.get_models()) #1
+				n_resids_2 = sum(1 for _ in mol_2.get_residues()) #2
+				n_atoms_2 = sum(1 for _ in mol_2.get_atoms()) #15
+				has_docc_2 = sum(1 for a in mol_2.get_atoms() if a.is_disordered())
+				has_hatm_2 = sum(1 for r in mol_2.get_residues() if r.id[0] != ' ')
 
-			self.assertEqual(n_models, n_models_2)
-			self.assertEqual(n_resids, n_resids_2)
-			self.assertEqual(n_atoms, n_atoms_2)
-			self.assertEqual(has_docc, has_docc_2)
-			self.assertEqual(has_hatm, has_hatm_2)
+				self.assertEqual(n_models, n_models_2)
+				self.assertEqual(n_resids, n_resids_2)
+				self.assertEqual(n_atoms, n_atoms_2)
+				self.assertEqual(has_docc, has_docc_2)
+				self.assertEqual(has_hatm, has_hatm_2)
 
-	unittest.main(verbosity=0)
+		unittest.main(verbosity=0)
+
+	else:
+		for structure in sys.argv[1:]:
+			with open(structure) as handle:
+				mol = MolProcesser(handle)
+
+				io = PDBIO()
+				io.set_structure(mol.structure)
+				io.save('{0}_val.pdb'.format(structure.split('.')[0]))
