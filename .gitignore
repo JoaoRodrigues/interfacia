@@ -21,3 +21,5 @@ pip-selfcheck.json
 
 # Redis & Celery
 *.rdb
+celery.log
+celeryd.*
